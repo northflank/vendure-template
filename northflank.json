@@ -20,7 +20,7 @@
           "spec": {
             "name": "database",
             "type": "postgres",
-            "version": "14.5.0",
+            "version": "14-latest",
             "billing": {
               "deploymentPlan": "nf-compute-10",
               "storageClass": "ssd",
@@ -110,7 +110,10 @@
                   },
                   "deployment": {
                     "instances": 1,
-                    "cmdOverride": "yarn start:server",
+                    "docker": {
+                      "configType": "customCommand",
+                      "customCommand": "yarn start:server"
+                    },
                     "internal": {
                       "id": "build",
                       "branch": "master",
@@ -136,7 +139,10 @@
                   },
                   "deployment": {
                     "instances": 1,
-                    "cmdOverride": "yarn start:worker",
+                    "docker": {
+                      "configType": "customCommand",
+                      "customCommand": "yarn start:worker"
+                    },
                     "internal": {
                       "id": "build",
                       "branch": "master",
