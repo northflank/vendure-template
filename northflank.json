@@ -106,7 +106,7 @@
                 "spec": {
                   "name": "server",
                   "billing": {
-                    "deploymentPlan": "nf-compute-10"
+                    "deploymentPlan": "nf-compute-20"
                   },
                   "deployment": {
                     "instances": 1,
