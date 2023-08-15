@@ -4,7 +4,7 @@
   "apiVersion": "v1",
   "project": {
     "spec": {
-      "name": "Vendure Template",
+      "name": "Vendure",
       "description": "Vendure is a modern, open-source headless commerce framework built with TypeScript & Node.js.",
       "region": "europe-west",
       "color": "#57637A"
@@ -17,6 +17,7 @@
       "steps": [
         {
           "kind": "Addon",
+          "ref": "database",
           "spec": {
             "name": "database",
             "type": "postgres",
@@ -28,7 +29,9 @@
               "replicas": 1
             },
             "tlsEnabled": false,
-            "externalAccessEnabled": false
+            "externalAccessEnabled": false,
+            "ipPolicies": [],
+            "pitrEnabled": false
           }
         },
         {
@@ -48,35 +51,51 @@
             },
             "addonDependencies": [
               {
-                "addonId": "database",
+                "addonId": "${refs.database.id}",
                 "keys": [
                   {
                     "keyName": "HOST",
-                    "aliases": ["DB_HOST"]
+                    "aliases": [
+                      "DB_HOST"
+                    ]
                   },
                   {
                     "keyName": "PORT",
-                    "aliases": ["DB_PORT"]
+                    "aliases": [
+                      "DB_PORT"
+                    ]
                   },
                   {
                     "keyName": "DATABASE",
-                    "aliases": ["DB_NAME"]
+                    "aliases": [
+                      "DB_NAME"
+                    ]
                   },
                   {
                     "keyName": "USERNAME",
-                    "aliases": ["DB_USERNAME"]
+                    "aliases": [
+                      "DB_USERNAME"
+                    ]
                   },
                   {
                     "keyName": "PASSWORD",
-                    "aliases": ["DB_PASSWORD"]
+                    "aliases": [
+                      "DB_PASSWORD"
+                    ]
                   }
                 ]
               }
-            ]
+            ],
+            "restrictions": {
+              "restricted": false,
+              "nfObjects": [],
+              "tags": []
+            }
           }
         },
         {
           "kind": "BuildService",
+          "ref": "buildService",
           "spec": {
             "name": "build",
             "billing": {
@@ -93,7 +112,9 @@
                 "dockerWorkDir": "/",
                 "useCache": false
               }
-            }
+            },
+            "disabledCI": false,
+            "buildArguments": {}
           }
         },
         {
@@ -125,9 +146,16 @@
                       "name": "p01",
                       "internalPort": 3000,
                       "public": true,
-                      "protocol": "HTTP"
+                      "protocol": "HTTP",
+                      "security": {
+                        "credentials": [],
+                        "policies": []
+                      },
+                      "domains": [],
+                      "disableNfDomain": false
                     }
-                  ]
+                  ],
+                  "runtimeEnvironment": {}
                 }
               },
               {
@@ -148,7 +176,50 @@
                       "branch": "master",
                       "buildSHA": "latest"
                     }
-                  }
+                  },
+                  "ports": [],
+                  "runtimeEnvironment": {}
+                }
+              },
+              {
+                "kind": "ManualJob",
+                "spec": {
+                  "name": "migration",
+                  "tags": [],
+                  "billing": {
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "backoffLimit": 0,
+                  "runOnSourceChange": "never",
+                  "activeDeadlineSeconds": 1800,
+                  "deployment": {
+                    "docker": {
+                      "configType": "customCommand",
+                      "customCommand": "/bin/sh -c \"yarn migration:generate bootstrap && yarn migration:run\""
+                    },
+                    "buildpack": {
+                      "configType": "default"
+                    },
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      }
+                    },
+                    "internal": {
+                      "id": "build",
+                      "branch": "master",
+                      "buildSHA": "latest"
+                    }
+                  },
+                  "healthChecks": [],
+                  "disabledCI": false,
+                  "buildConfiguration": {
+                    "pathIgnoreRules": [],
+                    "isAllowList": false,
+                    "ciIgnoreFlagsEnabled": false
+                  },
+                  "runtimeEnvironment": {},
+                  "buildArguments": {}
                 }
               }
             ]
@@ -157,10 +228,36 @@
         {
           "kind": "Build",
           "spec": {
-            "id": "build",
+            "id": "${refs.buildService.id}",
             "type": "service",
             "branch": "master"
+          },
+          "condition": "success"
+        },
+        {
+          "kind": "Condition",
+          "spec": {
+            "kind": "Addon",
+            "spec": {
+              "type": "running",
+              "data": {
+                "addonId": "${refs.database.id}"
+              }
+            }
           }
+        },
+        {
+          "kind": "JobRun",
+          "spec": {
+            "jobId": "migration",
+            "deployment": {
+              "docker": {
+                "configType": "customCommand",
+                "customCommand": "/bin/sh -c \"yarn migration:generate bootstrap && yarn migration:run\""
+              }
+            }
+          },
+          "condition": "success"
         }
       ]
     }
